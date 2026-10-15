@@ -1,0 +1,940 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>BKP SPWLąd Poznań - Trener Podoficera & WF</title>
+  
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="BKP Poznań">
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Opcjonalny skrypt questions.js dla natychmiastowego działania przy podwójnym kliknięciu bez serwera -->
+  <script src="questions.js"></script>
+  
+  <style>
+    body {
+      -webkit-tap-highlight-color: transparent;
+      padding-top: env(safe-area-inset-top);
+      padding-bottom: env(safe-area-inset-bottom);
+    }
+    .custom-scroll::-webkit-scrollbar {
+      width: 4px;
+    }
+    .custom-scroll::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col font-sans select-none">
+
+  <!-- Górny pasek aplikacji -->
+  <header class="p-4 bg-slate-900 border-b border-slate-800 flex justify-between items-center sticky top-0 z-50 shadow-md">
+    <div class="flex items-center gap-3">
+      <div class="w-3.5 h-3.5 rounded-full bg-emerald-500 animate-pulse"></div>
+      <div>
+        <h1 class="text-sm font-black tracking-wider uppercase text-white">SPWLąd Poznań</h1>
+        <p class="text-[11px] text-slate-400 font-mono tracking-tight font-semibold">KURS PODOFICERSKI BKP</p>
+      </div>
+    </div>
+    <div class="flex items-center gap-2">
+      <span id="exam-timer" class="hidden text-sm bg-rose-950/80 text-rose-300 font-mono font-bold px-3 py-1.5 rounded-lg border border-rose-800">40:00</span>
+      <span id="badge-topic" class="text-xs bg-slate-800 px-3.5 py-1.5 rounded-lg text-slate-200 border border-slate-700 max-w-[160px] truncate font-semibold">
+        Wszystkie Działy
+      </span>
+    </div>
+  </header>
+
+  <!-- Pasek nawigacyjny modułów głównych (Testy vs Kalkulator WF) -->
+  <nav class="bg-slate-900/90 border-b border-slate-800 px-5 py-2.5 max-w-2xl mx-auto w-full flex gap-3">
+    <button id="nav-btn-quiz" onclick="switchMainTab('quiz')" class="flex-1 py-2 px-3 rounded-xl font-bold text-xs sm:text-sm bg-emerald-500 text-slate-950 transition shadow-sm">
+      📚 Testy Wiedzy
+    </button>
+    <button id="nav-btn-wf" onclick="switchMainTab('wf')" class="flex-1 py-2 px-3 rounded-xl font-bold text-xs sm:text-sm bg-slate-800 text-slate-300 hover:text-white transition border border-slate-700">
+      🏃 Kalkulator WF
+    </button>
+  </nav>
+
+  <!-- Kontener główny -->
+  <main class="flex-1 p-4 sm:p-5 max-w-2xl mx-auto w-full flex flex-col justify-between">
+    
+    <!-- ==================== MODUŁ TESTÓW WIEDZY ==================== -->
+    <div id="tab-quiz-content" class="flex-1 flex flex-col justify-between">
+      
+      <!-- EKRAN 1: MENU GŁÓWNE QUIZU -->
+      <div id="screen-menu" class="my-auto flex flex-col gap-3 py-2">
+        <div class="text-center mb-1">
+          <span class="text-emerald-400 font-mono text-xs uppercase tracking-widest font-bold">Trenażer Teoretyczny SPWLąd</span>
+          <h2 class="text-2xl font-black text-white mt-0.5">Egzamin Wstępny BKP</h2>
+          <p class="text-xs sm:text-sm text-slate-400 mt-1 max-w-md mx-auto">Wybierz moduł szkoleniowy, puszkę błędów lub oficjalny egzamin próbny.</p>
+        </div>
+
+        <!-- Kafelek Puszki Błędów (zapisywanej w pamięci telefonu) -->
+        <div id="mistakes-banner" class="hidden p-4 rounded-2xl bg-amber-950/40 border border-amber-500/40 flex justify-between items-center transition">
+          <div>
+            <div class="text-sm font-black text-amber-300 flex items-center gap-2">
+              <span>🚨</span> Twoja Puszka Błędów
+            </div>
+            <div id="mistakes-count-desc" class="text-xs text-amber-200/80 mt-0.5">
+              0 pytań wymaga powtórki
+            </div>
+          </div>
+          <button onclick="startMistakesBankQuiz()" class="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-xs transition active:scale-95 shadow-md">
+            Ćwicz błędy →
+          </button>
+        </div>
+
+        <!-- Tryb Egzaminu Oficjalnego -->
+        <button onclick="startExam(40, true)" class="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-700 hover:from-emerald-500 hover:to-teal-600 font-bold text-left flex justify-between items-center shadow-lg shadow-emerald-950/50 border border-emerald-500/30 transition active:scale-[0.98]">
+          <div>
+            <div class="text-base text-white font-black flex items-center gap-2">
+              <span class="text-lg">🛡️</span> Oficjalny Egzamin Próbny SPWLąd
+            </div>
+            <div class="text-xs text-emerald-100/90 mt-1">40 unikalnych pytań • 40 min • Próg zaliczenia 60%</div>
+          </div>
+          <span class="text-2xl text-emerald-200 font-black pl-2">➔</span>
+        </button>
+
+        <!-- Szybki trening 20 pytań -->
+        <button onclick="startExam(20, false)" class="p-3.5 sm:p-4 rounded-2xl bg-slate-900 hover:bg-slate-850 font-bold text-left flex justify-between items-center border border-slate-800 transition active:scale-[0.98]">
+          <div>
+            <div class="text-sm text-slate-200 font-black flex items-center gap-2">
+              <span>⚡</span> Szybki Trening Losowy
+            </div>
+            <div class="text-xs text-slate-400 mt-0.5">20 losowych pytań bez limitu czasu ze wszystkich działów</div>
+          </div>
+          <span class="text-sm text-emerald-400 font-extrabold pl-2">Start →</span>
+        </button>
+
+        <div class="text-xs font-bold uppercase tracking-wider text-slate-400 mt-1 px-1 flex justify-between items-center">
+          <span>Bloki Tematyczne</span>
+          <span id="total-questions-count" class="font-mono text-emerald-400 text-xs font-bold">Ładowanie pytań...</span>
+        </div>
+
+        <!-- Lista Działów Tematycznych -->
+        <div id="categories-list" class="flex flex-col gap-2 max-h-[42vh] overflow-y-auto pr-1 custom-scroll">
+          <!-- Renderowane dynamicznie -->
+        </div>
+      </div>
+
+      <!-- EKRAN 2: TEST / PYTANIE -->
+      <div id="screen-quiz" class="hidden flex-1 flex flex-col justify-between py-2">
+        <div>
+          <div class="flex justify-between items-center text-sm text-slate-400 mb-2">
+            <span id="quiz-cat-name" class="font-bold text-emerald-400 uppercase tracking-wider text-xs max-w-[240px] truncate">Dział</span>
+            <span id="quiz-counter" class="font-mono bg-slate-900 border border-slate-800 px-3 py-1 rounded-lg text-slate-200 font-bold text-xs">1 / 40</span>
+          </div>
+
+          <div class="w-full bg-slate-900 h-2 rounded-full overflow-hidden mb-3 border border-slate-800">
+            <div id="quiz-progress-bar" class="bg-emerald-500 h-full w-0 transition-all duration-200"></div>
+          </div>
+
+          <!-- Karta z pytaniem -->
+          <div class="bg-slate-900/90 border border-slate-800 p-4 sm:p-5 rounded-2xl shadow-sm mb-3.5">
+            <h3 id="quiz-question-text" class="text-base sm:text-lg font-semibold leading-relaxed text-slate-100">
+              Treść pytania egzaminacyjnego...
+            </h3>
+          </div>
+
+          <!-- Opcje Odpowiedzi ABCD -->
+          <div id="answers-box" class="flex flex-col gap-2.5">
+            <!-- Wstawiane dynamicznie -->
+          </div>
+
+          <!-- Wyjaśnienie merytoryczne -->
+          <div id="explanation-box" class="hidden mt-3.5 p-4 rounded-xl bg-slate-900/95 border border-emerald-500/50 text-xs sm:text-sm text-slate-200 leading-relaxed shadow-lg">
+            <span class="font-bold text-emerald-400 block mb-1 text-xs uppercase tracking-wide">Podstawa i uzasadnienie:</span>
+            <span id="explanation-text">...</span>
+          </div>
+        </div>
+
+        <!-- Dolny panel sterowania -->
+        <div class="mt-4 pt-2">
+          <button id="btn-next" onclick="nextQuestion()" class="w-full hidden bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black py-4 px-5 rounded-xl transition shadow-lg text-base active:scale-[0.98]">
+            Następne pytanie ➔
+          </button>
+        </div>
+      </div>
+
+      <!-- EKRAN 3: PODSUMOWANIE I WYNIK -->
+      <div id="screen-results" class="hidden my-auto text-center bg-slate-900 p-6 sm:p-8 rounded-3xl border border-slate-800 shadow-2xl">
+        <div id="result-icon" class="text-5xl mb-2">🎯</div>
+        <h3 id="result-verdict" class="text-2xl font-black mb-1">WYNIK TESTU</h3>
+        <p id="result-desc" class="text-sm text-slate-400 mb-5">Ocena przygotowania kandydata</p>
+        
+        <div id="result-percentage" class="text-6xl font-black text-emerald-400 mb-2 font-mono tracking-tight">0%</div>
+        <p id="result-raw" class="text-slate-300 font-mono text-sm mb-5 font-semibold">0 / 0 pkt</p>
+
+        <div class="grid grid-cols-2 gap-3 mb-6">
+          <div class="bg-slate-950 p-3.5 rounded-2xl border border-slate-800">
+            <span class="text-xs uppercase font-bold text-slate-400 block">Poprawne</span>
+            <span id="res-correct" class="text-xl font-mono font-bold text-emerald-400">0</span>
+          </div>
+          <div class="bg-slate-950 p-3.5 rounded-2xl border border-slate-800">
+            <span class="text-xs uppercase font-bold text-slate-400 block">Błędne</span>
+            <span id="res-wrong" class="text-xl font-mono font-bold text-rose-500">0</span>
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-2.5">
+          <button id="btn-repeat-mistakes" onclick="retryMistakes()" class="hidden w-full bg-amber-600 hover:bg-amber-500 text-slate-950 font-black py-3.5 rounded-xl text-sm transition active:scale-[0.98]">
+            Powtórz tylko błędy z tej sesji
+          </button>
+          <button onclick="retryCurrentModule()" class="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-3.5 rounded-xl border border-slate-700 text-sm transition active:scale-[0.98]">
+            Powtórz ten test
+          </button>
+          <button onclick="returnToMenu()" class="w-full bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black py-3.5 rounded-xl text-sm transition active:scale-[0.98]">
+            Wróć do menu głównego
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ==================== MODUŁ KALKULATORA WF ==================== -->
+    <div id="tab-wf-content" class="hidden flex-1 flex flex-col justify-between py-2">
+      <div class="space-y-4">
+        <div>
+          <span class="text-emerald-400 font-mono text-xs uppercase tracking-widest font-bold">Kwalifikacja Sprawnościowa</span>
+          <h2 class="text-2xl font-black text-white mt-0.5">Kalkulator Norm WF MON</h2>
+          <p class="text-xs sm:text-sm text-slate-400 mt-1 leading-relaxed">
+            Sprawdź swoją punktację i ocenę sprawności fizycznej zgodnie z normami kwalifikacyjnymi do korpusu podoficerów.
+          </p>
+        </div>
+
+        <!-- Wybór Płci i Grupy Wiekowej -->
+        <div class="grid grid-cols-2 gap-3 bg-slate-900 p-4 rounded-2xl border border-slate-800">
+          <div>
+            <label class="text-xs uppercase font-bold text-slate-400 block mb-1.5">Płeć</label>
+            <div class="flex gap-2">
+              <button id="wf-gender-m" onclick="setWfGender('M')" class="flex-1 py-2 rounded-xl font-bold text-xs bg-emerald-500 text-slate-950 transition">
+                Mężczyzna
+              </button>
+              <button id="wf-gender-k" onclick="setWfGender('K')" class="flex-1 py-2 rounded-xl font-bold text-xs bg-slate-800 text-slate-300 transition border border-slate-700">
+                Kobieta
+              </button>
+            </div>
+          </div>
+          <div>
+            <label class="text-xs uppercase font-bold text-slate-400 block mb-1.5">Grupa wiekowa</label>
+            <select id="wf-age-group" onchange="calculateWfScore()" class="w-full py-2 px-3 rounded-xl bg-slate-800 border border-slate-700 text-slate-100 text-xs font-bold focus:outline-none focus:border-emerald-500">
+              <option value="1">Grupa I (do 25 lat)</option>
+              <option value="2">Grupa II (26 - 30 lat)</option>
+              <option value="3">Grupa III (31 - 35 lat)</option>
+              <option value="4">Grupa IV (36 lat i więcej)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Pola konkurencji sprawnościowych -->
+        <div class="space-y-3">
+          
+          <!-- Konkurencja 1: Bieg 3000 m -->
+          <div class="bg-slate-900 p-4 rounded-2xl border border-slate-800 flex flex-col gap-2">
+            <div class="flex justify-between items-center">
+              <span class="text-sm font-bold text-slate-200">🏃 1. Marszobieg 3000 m</span>
+              <span id="wf-score-run" class="text-xs font-mono font-black text-emerald-400 bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-800">0 pkt</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <input type="number" id="wf-run-min" placeholder="Min" min="8" max="25" oninput="calculateWfScore()" class="w-1/2 p-2.5 rounded-xl bg-slate-950 border border-slate-700 text-sm font-mono text-center text-white focus:outline-none focus:border-emerald-500">
+              <span class="text-slate-400 font-bold">:</span>
+              <input type="number" id="wf-run-sec" placeholder="Sek" min="0" max="59" oninput="calculateWfScore()" class="w-1/2 p-2.5 rounded-xl bg-slate-950 border border-slate-700 text-sm font-mono text-center text-white focus:outline-none focus:border-emerald-500">
+            </div>
+          </div>
+
+          <!-- Konkurencja 2: Podciąganie na drążku / Pompki -->
+          <div class="bg-slate-900 p-4 rounded-2xl border border-slate-800 flex flex-col gap-2">
+            <div class="flex justify-between items-center">
+              <span class="text-sm font-bold text-slate-200">💪 2. Podciąganie na drążku (lub pompki)</span>
+              <span id="wf-score-pullups" class="text-xs font-mono font-black text-emerald-400 bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-800">0 pkt</span>
+            </div>
+            <input type="number" id="wf-pullups" placeholder="Liczba powtórzeń (np. 12)" min="0" max="60" oninput="calculateWfScore()" class="w-full p-2.5 rounded-xl bg-slate-950 border border-slate-700 text-sm font-mono text-center text-white focus:outline-none focus:border-emerald-500">
+          </div>
+
+          <!-- Konkurencja 3: Bieg wahadłowy 10x10 m -->
+          <div class="bg-slate-900 p-4 rounded-2xl border border-slate-800 flex flex-col gap-2">
+            <div class="flex justify-between items-center">
+              <span class="text-sm font-bold text-slate-200">⚡ 3. Bieg wahadłowy 10 × 10 m (s)</span>
+              <span id="wf-score-shuttle" class="text-xs font-mono font-black text-emerald-400 bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-800">0 pkt</span>
+            </div>
+            <input type="number" step="0.1" id="wf-shuttle" placeholder="Czas w sekundach (np. 30.5)" min="24" max="50" oninput="calculateWfScore()" class="w-full p-2.5 rounded-xl bg-slate-950 border border-slate-700 text-sm font-mono text-center text-white focus:outline-none focus:border-emerald-500">
+          </div>
+
+          <!-- Konkurencja 4: Skłony tułowia w czasie 2 minut (brzuszki) -->
+          <div class="bg-slate-900 p-4 rounded-2xl border border-slate-800 flex flex-col gap-2">
+            <div class="flex justify-between items-center">
+              <span class="text-sm font-bold text-slate-200">🔄 4. Skłony tułowia w 2 min (brzuszki)</span>
+              <span id="wf-score-crunches" class="text-xs font-mono font-black text-emerald-400 bg-slate-950 px-2.5 py-1 rounded-lg border border-slate-800">0 pkt</span>
+            </div>
+            <input type="number" id="wf-crunches" placeholder="Liczba powtórzeń (np. 65)" min="0" max="150" oninput="calculateWfScore()" class="w-full p-2.5 rounded-xl bg-slate-950 border border-slate-700 text-sm font-mono text-center text-white focus:outline-none focus:border-emerald-500">
+          </div>
+
+        </div>
+
+        <!-- Karta Podsumowania WF -->
+        <div class="p-5 rounded-2xl bg-slate-900 border border-slate-800 text-center shadow-xl">
+          <span class="text-xs uppercase font-bold text-slate-400 block">Łączna Liczba Punktów</span>
+          <div id="wf-total-points" class="text-5xl font-black text-emerald-400 font-mono mt-1 mb-2">0 pkt</div>
+          <div class="flex items-center justify-center gap-3">
+            <span class="text-xs text-slate-300">Ocena końcowa z WF:</span>
+            <span id="wf-final-grade" class="text-lg font-black font-mono text-slate-400 bg-slate-950 px-3 py-1 rounded-xl border border-slate-800">BRAK DANYCH</span>
+          </div>
+          <p id="wf-verdict-note" class="text-xs text-slate-400 mt-3">Wprowadź swoje wyniki powyżej, aby przeliczyć ocenę kwalifikacyjną.</p>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    /* ==================== ZARZĄDZANIE DANYMI I STANEM ==================== */
+    let questionsDatabase = [];
+    let activeQuestions = [];
+    let wrongQuestions = [];
+    let currentIndex = 0;
+    let score = 0;
+    let answered = false;
+    let currentModule = 'ALL';
+    let examTimerInterval = null;
+    let timeLeftSeconds = 40 * 60;
+    let isMistakesPracticeMode = false;
+
+    // Obsługa Puszki Błędów w localStorage
+    const STORAGE_KEY_MISTAKES = 'spwlad_mistakes_bank_ids';
+
+    function getStoredMistakeIds() {
+      try {
+        const stored = localStorage.getItem(STORAGE_KEY_MISTAKES);
+        return stored ? JSON.parse(stored) : [];
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function saveStoredMistakeIds(ids) {
+      try {
+        localStorage.setItem(STORAGE_KEY_MISTAKES, JSON.stringify(ids));
+      } catch (e) {
+        console.error('Błąd zapisu w localStorage', e);
+      }
+      updateMistakesBanner();
+    }
+
+    function addMistakeId(id) {
+      const ids = getStoredMistakeIds();
+      if (!ids.includes(id)) {
+        ids.push(id);
+        saveStoredMistakeIds(ids);
+      }
+    }
+
+    function removeMistakeId(id) {
+      let ids = getStoredMistakeIds();
+      ids = ids.filter(item => item !== id);
+      saveStoredMistakeIds(ids);
+    }
+
+    function updateMistakesBanner() {
+      const mistakeIds = getStoredMistakeIds();
+      const banner = document.getElementById('mistakes-banner');
+      const countDesc = document.getElementById('mistakes-count-desc');
+
+      if (!banner || !countDesc) return;
+
+      if (mistakeIds.length > 0) {
+        banner.classList.remove('hidden');
+        countDesc.innerText = `${mistakeIds.length} ${mistakeIds.length === 1 ? 'pytanie wymaga' : 'pytań wymaga'} ponownego opanowania`;
+      } else {
+        banner.classList.add('hidden');
+      }
+    }
+
+    /* ==================== INICJALIZACJA BAZY PYTAŃ ==================== */
+    async function initDatabase() {
+      // 1. Sprawdź, czy baza jest już załadowana z pliku questions.js
+      if (typeof window.questionsDatabase !== 'undefined' && Array.isArray(window.questionsDatabase) && window.questionsDatabase.length > 0) {
+        questionsDatabase = window.questionsDatabase;
+        renderCategoryMenu();
+        updateMistakesBanner();
+        return;
+      }
+
+      // 2. Jeśli nie, spróbuj pobrać z questions.json (gdy działa python -m http.server lub Netlify)
+      try {
+        const response = await fetch('./questions.json');
+        if (response.ok) {
+          const data = await response.json();
+          if (Array.isArray(data) && data.length > 0) {
+            questionsDatabase = data;
+            renderCategoryMenu();
+            updateMistakesBanner();
+            return;
+          }
+        }
+      } catch (e) {
+        console.warn('Wczytywanie questions.json zablokowane (CORS lub brak serwera). Przechodzę do bazy awaryjnej.', e);
+      }
+
+      // 3. PANCERNY FALLBACK: Wbudowana baza startowa na wypadek braku serwera i pliku questions.js
+      questionsDatabase = [
+        {
+          id: 1,
+          category: "Regulamin Ogólny SZ RP",
+          question: "Kto w myśl Regulaminu Ogólnego SZ RP jest uznawany za przełożonego?",
+          options: [
+            "Żołnierz lub osoba niebędąca żołnierzem, której na mocy przepisów prawa, etatu lub rozkazu podporządkowano żołnierza",
+            "Każdy żołnierz posiadający wyższy stopień wojskowy",
+            "Wyłącznie dowódca jednostki wojskowej",
+            "Podoficer dyżurny pododdziału"
+          ],
+          correct: 0,
+          explanation: "Przełożonym jest osoba uprawniona służbowo do wydawania rozkazów podwładnym."
+        },
+        {
+          id: 2,
+          category: "Regulamin Ogólny SZ RP",
+          question: "W jakiej odległości przed przełożonym zatrzymuje się podwładny w celu złożenia meldunku?",
+          options: ["W odległości 1 kroku", "W odległości 3 kroków", "W odległości 5 kroków", "W odległości 2 kroków"],
+          correct: 1,
+          explanation: "Regulamin nakazuje zatrzymanie się dokładnie 3 kroki przed przełożonym."
+        },
+        {
+          id: 3,
+          category: "Regulamin Musztry SZ RP",
+          question: "Jaka jest prawidłowa długość kroku w marszu krokiem zwykłym?",
+          options: ["50–60 cm", "60–70 cm", "70–80 cm", "80–90 cm"],
+          correct: 2,
+          explanation: "Regulamin Musztry określa długość kroku zwykłego na 70–80 cm."
+        },
+        {
+          id: 4,
+          category: "Regulamin Musztry SZ RP",
+          question: "Jakie jest regulaminowe tempo marszu krokiem zwykłym?",
+          options: ["90–100 kroków/min", "100–108 kroków/min", "112–116 kroków/min", "120–130 kroków/min"],
+          correct: 2,
+          explanation: "Regulaminowe tempo marszu wynosi 112–116 kroków na minutę."
+        },
+        {
+          id: 5,
+          category: "Metodyka Szkolenia Wojskowego",
+          question: "Podstawową formą przygotowania podoficerów do prowadzenia zajęć programowych są:",
+          options: ["Wykłady teoretyczne", "Zajęcia instruktorsko-metodyczne (ZIM)", "Treningi kondycyjne", "Apele mundurowe"],
+          correct: 1,
+          explanation: "ZIM stanowią podstawową formę przygotowania instruktorów i dowódców drużyn."
+        },
+        {
+          id: 6,
+          category: "Taktyka Ogólna i Rozpoznanie",
+          question: "Co oznacza akronim SALUTE w meldunkach rozpoznawczych NATO?",
+          options: [
+            "Size, Activity, Location, Unit, Time, Equipment",
+            "Safety, Attack, Line, Utility, Target, Entry",
+            "Sector, Alert, Leadership, Uniform, Time, Escape",
+            "Signal, Armor, Logistics, Urban, Tactics, Effect"
+          ],
+          correct: 0,
+          explanation: "SALUTE: Wielkość (Size), Działanie (Activity), Położenie (Location), Przynależność (Unit), Czas (Time), Wyposażenie (Equipment)."
+        },
+        {
+          id: 7,
+          category: "Szkolenie Strzeleckie i Budowa Broni",
+          question: "Zasada BLOS w bezpiecznym posługiwaniu się bronią oznacza:",
+          options: [
+            "Bojowy, Liniowy, Obronny, Strzelecki",
+            "Broń, Lufa, Otoczenie, Spust",
+            "Baza, Linia ognia, Ochrona, Strzelec",
+            "Bezpieczeństwo, Ładownica, Ogień, Siła"
+          ],
+          correct: 1,
+          explanation: "BLOS: Broń zawsze załadowana, Lufa w bezpiecznym kierunku, Otoczenie sprawdzone, Spust naciskany tylko do strzału."
+        },
+        {
+          id: 8,
+          category: "Szkolenie Medyczne (TCCC / CLS)",
+          question: "Jedyną dopuszczalną interwencją medyczną w fazie CUF (Care Under Fire) jest:",
+          options: [
+            "Udrożnienie dróg oddechowych rurką NP",
+            "Założenie stazy taktycznej na masywnie krwawiącą kończynę",
+            "Założenie opatrunku wentylowego",
+            "Podanie leków przeciwbólowych"
+          ],
+          correct: 1,
+          explanation: "Pod bezpośrednim ostrzałem priorytetem jest ogień do wroga oraz staza 'high and tight'."
+        },
+        {
+          id: 9,
+          category: "Międzynarodowe Prawo Humanitarne (MPHKZ)",
+          question: "Zasada proporcjonalności w MPHKZ oznacza, że:",
+          options: [
+            "Straty cywilne i uszkodzenia dóbr cywilnych nie mogą być nadmierne w stosunku do oczekiwanej korzyści wojskowej",
+            "Liczba żołnierzy obu stron musi być identyczna",
+            "Strony muszą używać amunicji o tym samym kalibrze",
+            "Każdy poległy musi być pomszczony"
+          ],
+          correct: 0,
+          explanation: "Proporcjonalność zakazuje ataków wywołujących nadmierne cierpienia lub straty u ludności cywilnej."
+        },
+        {
+          id: 10,
+          category: "Ochrona Informacji Niejawnych",
+          question: "Cztery ustawowe klauzule tajności w RP to:",
+          options: [
+            "Jawne, Poufne, Wojskowe, Specjalne",
+            "Zastrzeżone, Poufne, Tajne, Ściśle Tajne",
+            "Służbowe, Zastrzeżone, Niejawne, Państwowe",
+            "Poziom 1, Poziom 2, Poziom 3, Poziom 4"
+          ],
+          correct: 1,
+          explanation: "Ustawa o ochronie informacji niejawnych wyróżnia: Zastrzeżone, Poufne, Tajne i Ściśle Tajne."
+        },
+        {
+          id: 11,
+          category: "OPBMR i Ochrona Środowiska",
+          question: "Norma czasowa na założenie maski przeciwgazowej (np. MP-5) na komendę 'GAZY' na ocenę bdb wynosi:",
+          options: ["Do 7 sekund", "Do 15 sekund", "Do 25 sekund", "Do 30 sekund"],
+          correct: 0,
+          explanation: "Norma wyszkolenia bojowego OPBMR: do 7 s to ocena bardzo dobra."
+        },
+        {
+          id: 12,
+          category: "Wiedza Ogólnowojskowa i Bezpieczeństwo",
+          question: "Najwyższym zwierzchnikiem Sił Zbrojnych Rzeczypospolitej Polskiej jest:",
+          options: [
+            "Prezydent Rzeczypospolitej Polskiej",
+            "Minister Obrony Narodowej",
+            "Szef Sztabu Generalnego WP",
+            "Dowódca Generalny RSZ"
+          ],
+          correct: 0,
+          explanation: "Art. 134 Konstytucji RP: Prezydent jest Najwyższym Zwierzchnikiem Sił Zbrojnych."
+        }
+      ];
+
+      renderCategoryMenu();
+      updateMistakesBanner();
+    }
+
+    function renderCategoryMenu() {
+      document.getElementById('total-questions-count').innerText = `${questionsDatabase.length} pytań w bazie`;
+
+      const categories = [...new Set(questionsDatabase.map(q => q.category))];
+      const listContainer = document.getElementById('categories-list');
+      listContainer.innerHTML = '';
+
+      categories.forEach(cat => {
+        const count = questionsDatabase.filter(q => q.category === cat).length;
+        const btn = document.createElement('button');
+        btn.className = "p-3.5 rounded-2xl bg-slate-900 border border-slate-800 hover:border-slate-700 font-medium text-left flex justify-between items-center transition active:scale-[0.98]";
+        btn.innerHTML = `
+          <div class="truncate pr-3">
+            <div class="text-sm font-bold text-slate-100 truncate">${cat}</div>
+            <div class="text-xs text-slate-400 font-mono mt-0.5">${count} pytań</div>
+          </div>
+          <span class="text-xs text-emerald-400 font-extrabold shrink-0">Ćwicz →</span>
+        `;
+        btn.onclick = () => startCategoryQuiz(cat);
+        listContainer.appendChild(btn);
+      });
+    }
+
+    function switchMainTab(tab) {
+      const quizNav = document.getElementById('nav-btn-quiz');
+      const wfNav = document.getElementById('nav-btn-wf');
+      const quizContent = document.getElementById('tab-quiz-content');
+      const wfContent = document.getElementById('tab-wf-content');
+
+      if (tab === 'quiz') {
+        quizNav.className = "flex-1 py-2 px-3 rounded-xl font-bold text-xs sm:text-sm bg-emerald-500 text-slate-950 transition shadow-sm";
+        wfNav.className = "flex-1 py-2 px-3 rounded-xl font-bold text-xs sm:text-sm bg-slate-800 text-slate-300 hover:text-white transition border border-slate-700";
+        quizContent.classList.remove('hidden');
+        wfContent.classList.add('hidden');
+      } else {
+        wfNav.className = "flex-1 py-2 px-3 rounded-xl font-bold text-xs sm:text-sm bg-emerald-500 text-slate-950 transition shadow-sm";
+        quizNav.className = "flex-1 py-2 px-3 rounded-xl font-bold text-xs sm:text-sm bg-slate-800 text-slate-300 hover:text-white transition border border-slate-700";
+        wfContent.classList.remove('hidden');
+        quizContent.classList.add('hidden');
+        stopTimer();
+      }
+    }
+
+    function showScreen(id) {
+      ['screen-menu', 'screen-quiz', 'screen-results'].forEach(s => {
+        document.getElementById(s).classList.add('hidden');
+      });
+      document.getElementById(id).classList.remove('hidden');
+    }
+
+    /* ==================== URUCHAMIANIE TESTÓW ==================== */
+    function startExam(count = 40, withTimer = true) {
+      currentModule = 'ALL';
+      isMistakesPracticeMode = false;
+      wrongQuestions = [];
+      document.getElementById('badge-topic').innerText = "Egzamin BKP";
+
+      const categories = [...new Set(questionsDatabase.map(q => q.category))];
+      let selected = [];
+
+      if (count === 40 && categories.length >= 10) {
+        categories.forEach(cat => {
+          const pool = questionsDatabase.filter(q => q.category === cat);
+          const shuffled = [...pool].sort(() => Math.random() - 0.5);
+          selected.push(...shuffled.slice(0, 4));
+        });
+      } else {
+        const shuffled = [...questionsDatabase].sort(() => Math.random() - 0.5);
+        selected = shuffled.slice(0, Math.min(count, shuffled.length));
+      }
+
+      activeQuestions = selected.sort(() => Math.random() - 0.5);
+
+      if (withTimer) {
+        startTimer(count * 60);
+      } else {
+        stopTimer();
+      }
+
+      initQuiz();
+    }
+
+    function startCategoryQuiz(category) {
+      currentModule = category;
+      isMistakesPracticeMode = false;
+      wrongQuestions = [];
+      stopTimer();
+      activeQuestions = [...questionsDatabase.filter(q => q.category === category)].sort(() => Math.random() - 0.5);
+      document.getElementById('badge-topic').innerText = category;
+      initQuiz();
+    }
+
+    function startMistakesBankQuiz() {
+      const mistakeIds = getStoredMistakeIds();
+      if (mistakeIds.length === 0) return;
+
+      currentModule = 'MISTAKES';
+      isMistakesPracticeMode = true;
+      wrongQuestions = [];
+      stopTimer();
+
+      activeQuestions = questionsDatabase.filter(q => mistakeIds.includes(q.id)).sort(() => Math.random() - 0.5);
+      document.getElementById('badge-topic').innerText = "Puszka Błędów";
+      initQuiz();
+    }
+
+    function startTimer(seconds) {
+      stopTimer();
+      timeLeftSeconds = seconds;
+      const timerEl = document.getElementById('exam-timer');
+      timerEl.classList.remove('hidden');
+      updateTimerDisplay();
+
+      examTimerInterval = setInterval(() => {
+        timeLeftSeconds--;
+        updateTimerDisplay();
+        if (timeLeftSeconds <= 0) {
+          stopTimer();
+          renderResults();
+        }
+      }, 1000);
+    }
+
+    function stopTimer() {
+      if (examTimerInterval) {
+        clearInterval(examTimerInterval);
+        examTimerInterval = null;
+      }
+      document.getElementById('exam-timer').classList.add('hidden');
+    }
+
+    function updateTimerDisplay() {
+      const mins = Math.floor(timeLeftSeconds / 60);
+      const secs = timeLeftSeconds % 60;
+      document.getElementById('exam-timer').innerText = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    }
+
+    function initQuiz() {
+      currentIndex = 0;
+      score = 0;
+      showScreen('screen-quiz');
+      loadCurrentQuestion();
+    }
+
+    function loadCurrentQuestion() {
+      answered = false;
+      document.getElementById('btn-next').classList.add('hidden');
+      document.getElementById('explanation-box').classList.add('hidden');
+
+      const q = activeQuestions[currentIndex];
+      document.getElementById('quiz-cat-name').innerText = q.category;
+      document.getElementById('quiz-counter').innerText = `${currentIndex + 1} / ${activeQuestions.length}`;
+      document.getElementById('quiz-question-text').innerText = q.question;
+
+      const progress = ((currentIndex) / activeQuestions.length) * 100;
+      document.getElementById('quiz-progress-bar').style.width = `${progress}%`;
+
+      const container = document.getElementById('answers-box');
+      container.innerHTML = '';
+
+      q.options.forEach((optText, idx) => {
+        const btn = document.createElement('button');
+        btn.className = "w-full text-left p-4 rounded-2xl bg-slate-900 border border-slate-800 text-slate-100 transition duration-150 flex items-start group active:scale-[0.99]";
+        btn.innerHTML = `
+          <span class="w-7 h-7 flex items-center justify-center rounded-xl bg-slate-800 font-bold mr-3.5 text-xs text-slate-300 mt-0.5 shrink-0 group-hover:bg-slate-700">${String.fromCharCode(65 + idx)}</span>
+          <span class="text-sm sm:text-base leading-snug flex-1">${optText}</span>
+        `;
+        btn.onclick = () => selectOption(idx, btn);
+        container.appendChild(btn);
+      });
+    }
+
+    function selectOption(chosenIdx, element) {
+      if (answered) return;
+      answered = true;
+
+      const q = activeQuestions[currentIndex];
+      const buttons = document.getElementById('answers-box').children;
+
+      if (chosenIdx === q.correct) {
+        score++;
+        element.classList.replace('bg-slate-900', 'bg-emerald-950/70');
+        element.classList.replace('border-slate-800', 'border-emerald-500');
+        element.querySelector('span:first-child').className = "w-7 h-7 flex items-center justify-center rounded-xl bg-emerald-500 font-bold mr-3.5 text-xs text-slate-950 mt-0.5 shrink-0";
+        
+        // Jeśli ćwiczymy błędy i odpowiedziano poprawnie, usuwamy pytanie z puszki błędów!
+        if (isMistakesPracticeMode) {
+          removeMistakeId(q.id);
+        }
+      } else {
+        wrongQuestions.push(q);
+        // Automatyczne dodanie błędu do trwałej Puszki Błędów
+        addMistakeId(q.id);
+
+        element.classList.replace('bg-slate-900', 'bg-rose-950/70');
+        element.classList.replace('border-slate-800', 'border-rose-500');
+        element.querySelector('span:first-child').className = "w-7 h-7 flex items-center justify-center rounded-xl bg-rose-500 font-bold mr-3.5 text-xs text-white mt-0.5 shrink-0";
+
+        const correctBtn = buttons[q.correct];
+        correctBtn.classList.replace('bg-slate-900', 'bg-emerald-950/70');
+        correctBtn.classList.replace('border-slate-800', 'border-emerald-500');
+        correctBtn.querySelector('span:first-child').className = "w-7 h-7 flex items-center justify-center rounded-xl bg-emerald-500 font-bold mr-3.5 text-xs text-slate-950 mt-0.5 shrink-0";
+      }
+
+      if (q.explanation) {
+        const expBox = document.getElementById('explanation-box');
+        document.getElementById('explanation-text').innerText = q.explanation;
+        expBox.classList.remove('hidden');
+      }
+
+      document.getElementById('btn-next').classList.remove('hidden');
+    }
+
+    function nextQuestion() {
+      currentIndex++;
+      if (currentIndex < activeQuestions.length) {
+        loadCurrentQuestion();
+      } else {
+        renderResults();
+      }
+    }
+
+    function renderResults() {
+      stopTimer();
+      showScreen('screen-results');
+      const total = activeQuestions.length;
+      const percentage = Math.round((score / total) * 100);
+      const isPassed = percentage >= 60;
+
+      document.getElementById('result-percentage').innerText = `${percentage}%`;
+      document.getElementById('result-raw').innerText = `${score} z ${total} punktów`;
+      document.getElementById('res-correct').innerText = score;
+      document.getElementById('res-wrong').innerText = total - score;
+
+      const verdictEl = document.getElementById('result-verdict');
+      const descEl = document.getElementById('result-desc');
+      const percentEl = document.getElementById('result-percentage');
+      const iconEl = document.getElementById('result-icon');
+      const mistakesBtn = document.getElementById('btn-repeat-mistakes');
+
+      if (wrongQuestions.length > 0) {
+        mistakesBtn.classList.remove('hidden');
+      } else {
+        mistakesBtn.classList.add('hidden');
+      }
+
+      if (isPassed) {
+        iconEl.innerText = "🎖️";
+        verdictEl.innerText = "KWALIFIKACJA POZYTYWNA";
+        verdictEl.className = "text-xl font-black mb-0.5 text-emerald-400";
+        percentEl.className = "text-6xl font-black text-emerald-400 mb-1 font-mono tracking-tight";
+        descEl.innerText = "Wynik powyżej wymaganego progu (minimum 60%)";
+      } else {
+        iconEl.innerText = "⚠️";
+        verdictEl.innerText = "BRAK KWALIFIKACJI";
+        verdictEl.className = "text-xl font-black mb-0.5 text-rose-500";
+        percentEl.className = "text-6xl font-black text-rose-500 mb-1 font-mono tracking-tight";
+        descEl.innerText = "Wymagane minimum do zaliczenia egzaminu BKP to 60%";
+      }
+
+      updateMistakesBanner();
+    }
+
+    function retryMistakes() {
+      if (wrongQuestions.length === 0) return;
+      activeQuestions = [...wrongQuestions].sort(() => Math.random() - 0.5);
+      wrongQuestions = [];
+      document.getElementById('badge-topic').innerText = "Poprawa Błędów";
+      initQuiz();
+    }
+
+    function retryCurrentModule() {
+      if (currentModule === 'ALL') {
+        startExam(40, true);
+      } else if (currentModule === 'MISTAKES') {
+        startMistakesBankQuiz();
+      } else {
+        startCategoryQuiz(currentModule);
+      }
+    }
+
+    function returnToMenu() {
+      stopTimer();
+      document.getElementById('badge-topic').innerText = "Wszystkie Działy";
+      showScreen('screen-menu');
+      updateMistakesBanner();
+    }
+
+    /* ==================== KALKULATOR WF (LOGIKA MON) ==================== */
+    let currentGender = 'M';
+
+    function setWfGender(gender) {
+      currentGender = gender;
+      const btnM = document.getElementById('wf-gender-m');
+      const btnK = document.getElementById('wf-gender-k');
+
+      if (gender === 'M') {
+        btnM.className = "flex-1 py-2 rounded-xl font-bold text-xs bg-emerald-500 text-slate-950 transition";
+        btnK.className = "flex-1 py-2 rounded-xl font-bold text-xs bg-slate-800 text-slate-300 transition border border-slate-700";
+      } else {
+        btnK.className = "flex-1 py-2 rounded-xl font-bold text-xs bg-emerald-500 text-slate-950 transition";
+        btnM.className = "flex-1 py-2 rounded-xl font-bold text-xs bg-slate-800 text-slate-300 transition border border-slate-700";
+      }
+      calculateWfScore();
+    }
+
+    function calculateWfScore() {
+      const ageGroup = parseInt(document.getElementById('wf-age-group').value) || 1;
+      const runMin = parseInt(document.getElementById('wf-run-min').value) || 0;
+      const runSec = parseInt(document.getElementById('wf-run-sec').value) || 0;
+      const pullups = parseInt(document.getElementById('wf-pullups').value) || 0;
+      const shuttle = parseFloat(document.getElementById('wf-shuttle').value) || 0;
+      const crunches = parseInt(document.getElementById('wf-crunches').value) || 0;
+
+      const totalRunSec = (runMin * 60) + runSec;
+
+      // 1. Punkty za bieg 3000m
+      let ptsRun = 0;
+      if (totalRunSec > 0) {
+        if (currentGender === 'M') {
+          if (totalRunSec <= 720) ptsRun = 25;       // <= 12:00
+          else if (totalRunSec <= 780) ptsRun = 21;  // <= 13:00
+          else if (totalRunSec <= 840) ptsRun = 17;  // <= 14:00
+          else if (totalRunSec <= 900) ptsRun = 13;  // <= 15:00
+          else if (totalRunSec <= 960) ptsRun = 9;   // <= 16:00
+          else ptsRun = 4;
+        } else {
+          if (totalRunSec <= 840) ptsRun = 25;       // <= 14:00
+          else if (totalRunSec <= 900) ptsRun = 21;  // <= 15:00
+          else if (totalRunSec <= 960) ptsRun = 17;  // <= 16:00
+          else if (totalRunSec <= 1020) ptsRun = 13; // <= 17:00
+          else ptsRun = 7;
+        }
+      }
+
+      // 2. Punkty za podciąganie
+      let ptsPullups = 0;
+      if (pullups > 0) {
+        if (currentGender === 'M') {
+          if (pullups >= 15) ptsPullups = 25;
+          else if (pullups >= 12) ptsPullups = 20;
+          else if (pullups >= 9) ptsPullups = 15;
+          else if (pullups >= 6) ptsPullups = 10;
+          else ptsPullups = 5;
+        } else {
+          // Dla kobiet uginanie ramion / podciąganie
+          if (pullups >= 25) ptsPullups = 25;
+          else if (pullups >= 18) ptsPullups = 20;
+          else if (pullups >= 12) ptsPullups = 15;
+          else if (pullups >= 6) ptsPullups = 10;
+          else ptsPullups = 5;
+        }
+      }
+
+      // 3. Punkty za bieg wahadłowy 10x10 m
+      let ptsShuttle = 0;
+      if (shuttle > 0) {
+        if (shuttle <= 29.5) ptsShuttle = 25;
+        else if (shuttle <= 31.0) ptsShuttle = 20;
+        else if (shuttle <= 32.5) ptsShuttle = 15;
+        else if (shuttle <= 34.0) ptsShuttle = 10;
+        else ptsShuttle = 5;
+      }
+
+      // 4. Punkty za skłony w 2 min (brzuszki)
+      let ptsCrunches = 0;
+      if (crunches > 0) {
+        if (crunches >= 70) ptsCrunches = 25;
+        else if (crunches >= 60) ptsCrunches = 20;
+        else if (crunches >= 50) ptsCrunches = 15;
+        else if (crunches >= 40) ptsCrunches = 10;
+        else ptsCrunches = 5;
+      }
+
+      // Wyświetlanie cząstkowe
+      document.getElementById('wf-score-run').innerText = `${ptsRun} pkt`;
+      document.getElementById('wf-score-pullups').innerText = `${ptsPullups} pkt`;
+      document.getElementById('wf-score-shuttle').innerText = `${ptsShuttle} pkt`;
+      document.getElementById('wf-score-crunches').innerText = `${ptsCrunches} pkt`;
+
+      const totalPoints = ptsRun + ptsPullups + ptsShuttle + ptsCrunches;
+      document.getElementById('wf-total-points').innerText = `${totalPoints} pkt`;
+
+      const gradeEl = document.getElementById('wf-final-grade');
+      const noteEl = document.getElementById('wf-verdict-note');
+
+      if (totalRunSec === 0 && pullups === 0 && shuttle === 0 && crunches === 0) {
+        gradeEl.innerText = "BRAK DANYCH";
+        gradeEl.className = "text-lg font-black font-mono text-slate-400 bg-slate-950 px-3 py-1 rounded-xl border border-slate-800";
+        noteEl.innerText = "Wprowadź swoje wyniki powyżej, aby przeliczyć ocenę kwalifikacyjną.";
+        return;
+      }
+
+      // Obliczenie oceny wg norm MON (próg zdawalności)
+      if (totalPoints >= 80) {
+        gradeEl.innerText = "BARDZO DOBRY (5)";
+        gradeEl.className = "text-lg font-black font-mono text-emerald-400 bg-emerald-950/50 px-3 py-1 rounded-xl border border-emerald-500/50";
+        noteEl.innerText = "Maksymalna punktacja rekrutacyjna! Znakomity poziom wytrenowania.";
+      } else if (totalPoints >= 65) {
+        gradeEl.innerText = "DOBRY (4)";
+        gradeEl.className = "text-lg font-black font-mono text-teal-400 bg-teal-950/50 px-3 py-1 rounded-xl border border-teal-500/50";
+        noteEl.innerText = "Wynik pewny i powyżej średniej kwalifikacyjnej do szkoły podoficerskiej.";
+      } else if (totalPoints >= 50) {
+        gradeEl.innerText = "DOSTATECZNY (3)";
+        gradeEl.className = "text-lg font-black font-mono text-amber-400 bg-amber-950/50 px-3 py-1 rounded-xl border border-amber-500/50";
+        noteEl.innerText = "Spełnione minimum kwalifikacyjne, ale warto poprawić konkurencje biegowe.";
+      } else {
+        gradeEl.innerText = "NIEDOSTATECZNY (2)";
+        gradeEl.className = "text-lg font-black font-mono text-rose-500 bg-rose-950/50 px-3 py-1 rounded-xl border border-rose-500/50";
+        noteEl.innerText = "Wynik poniżej progu kwalifikacyjnego MON (wymagane minimum 50 pkt).";
+      }
+    }
+
+    // Inicjalizacja przy starcie strony
+    window.addEventListener('DOMContentLoaded', () => {
+      initDatabase();
+      calculateWfScore();
+    });
+  </script>
+</body>
+</html>
+```
